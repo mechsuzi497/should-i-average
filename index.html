@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stock averaging dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0F1420;
+    --surface: #161C2C;
+    --border: rgba(255,255,255,0.08);
+    --text: #EDEFF5;
+    --text-muted: #8A90A6;
+    --gold: #D9A94E;
+    --green: #4FBF7A;
+    --red: #E2685A;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    padding: 48px 20px 80px;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  main {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 32px;
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 500;
+    margin: 0;
+    letter-spacing: 0.02em;
+  }
+  header .updated {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .hero {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    margin-bottom: 40px;
+  }
+  .hero .price {
+    font-size: 56px;
+    font-weight: 500;
+    line-height: 1;
+  }
+  .chip {
+    font-size: 14px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-weight: 500;
+  }
+  .chip.up { background: rgba(79,191,122,0.15); color: var(--green); }
+  .chip.down { background: rgba(226,104,90,0.15); color: var(--red); }
+  .chip.flat { background: rgba(138,144,166,0.15); color: var(--text-muted); }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .stat {
+    padding: 18px 16px;
+    border-right: 1px solid var(--border);
+  }
+  .stat:nth-child(3n) { border-right: none; }
+  .stat:nth-child(n+4) { border-top: 1px solid var(--border); }
+  .stat .label {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .stat .value {
+    font-size: 17px;
+    font-weight: 500;
+  }
+
+  .panel {
+    background: var(--surface);
+    border-left: 3px solid var(--gold);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .panel .verdict {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gold);
+    background: rgba(217,169,78,0.12);
+    border-radius: 999px;
+    padding: 4px 12px;
+    margin-bottom: 14px;
+  }
+  .panel .reasoning {
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text);
+    margin: 0 0 16px;
+  }
+  .panel .considerations {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--text-muted);
+    font-size: 14px;
+    line-height: 1.8;
+  }
+  .panel .considerations li::marker { color: var(--gold); }
+
+  footer {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  #error {
+    display: none;
+    color: var(--red);
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="ticker" class="mono">—</h1>
+    <span class="updated" id="updated">—</span>
+  </header>
+
+  <div id="error"></div>
+
+  <div class="hero">
+    <span class="price mono" id="cmp">—</span>
+    <span class="chip flat mono" id="day-change">—</span>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="label">Quantity held</div>
+      <div class="value mono" id="quantity">—</div>
+    </div>
+    <div class="stat">
+      <div class="label">Average buy price</div>
+      <div class="value mono" id="avg-price">—</div>
+    </div>
+    <div class="stat">
+      <div class="label">Invested</div>
+      <div class="value mono" id="invested">—</div>
+    </div>
+    <div class="stat">
+      <div class="label">Current value</div>
+      <div class="value mono" id="current-value">—</div>
+    </div>
+    <div class="stat">
+      <div class="label">P&amp;L</div>
+      <div class="value mono" id="pnl-value">—</div>
+    </div>
+    <div class="stat">
+      <div class="label">P&amp;L %</div>
+      <div class="value mono" id="pnl-pct">—</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <span class="verdict" id="verdict">—</span>
+    <p class="reasoning" id="reasoning">Loading…</p>
+    <ul class="considerations" id="considerations"></ul>
+  </div>
+
+  <footer>
+    Generated automatically from price and P&amp;L data only — no fundamentals or news.
+    This is informational, not financial advice.
+  </footer>
+</main>
+
+<script>
+  const fmtINR = n => '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+  const fmtPct = n => (n > 0 ? '+' : '') + Number(n).toFixed(2) + '%';
+
+  fetch('./data.json')
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('ticker').textContent = d.ticker;
+      document.getElementById('updated').textContent = d.last_updated
+        ? 'Updated ' + new Date(d.last_updated).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+        : 'Not yet updated';
+
+      document.getElementById('cmp').textContent = fmtINR(d.cmp);
+
+      const chip = document.getElementById('day-change');
+      chip.textContent = fmtPct(d.day_change_pct) + ' today';
+      chip.className = 'chip mono ' + (d.day_change_pct > 0 ? 'up' : d.day_change_pct < 0 ? 'down' : 'flat');
+
+      document.getElementById('quantity').textContent = d.quantity;
+      document.getElementById('avg-price').textContent = fmtINR(d.avg_buy_price);
+      document.getElementById('invested').textContent = fmtINR(d.invested_value);
+      document.getElementById('current-value').textContent = fmtINR(d.current_value);
+
+      const pnlValue = document.getElementById('pnl-value');
+      pnlValue.textContent = (d.pnl_value >= 0 ? '+' : '') + fmtINR(d.pnl_value);
+      pnlValue.style.color = d.pnl_value > 0 ? 'var(--green)' : d.pnl_value < 0 ? 'var(--red)' : 'var(--text)';
+
+      const pnlPct = document.getElementById('pnl-pct');
+      pnlPct.textContent = fmtPct(d.pnl_pct);
+      pnlPct.style.color = d.pnl_pct > 0 ? 'var(--green)' : d.pnl_pct < 0 ? 'var(--red)' : 'var(--text)';
+
+      document.getElementById('verdict').textContent = d.ai_verdict;
+      document.getElementById('reasoning').textContent = d.ai_reasoning;
+
+      const list = document.getElementById('considerations');
+      list.innerHTML = '';
+      (d.ai_considerations || []).forEach(c => {
+        const li = document.createElement('li');
+        li.textContent = c;
+        list.appendChild(li);
+      });
+    })
+    .catch(err => {
+      const box = document.getElementById('error');
+      box.style.display = 'block';
+      box.textContent = "Couldn't load data.json — run the workflow once from the Actions tab first.";
+    });
+</script>
+</body>
+</html>

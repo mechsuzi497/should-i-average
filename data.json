@@ -1,0 +1,15 @@
+{
+  "ticker": "—",
+  "cmp": 0,
+  "day_change_pct": 0,
+  "quantity": 0,
+  "avg_buy_price": 0,
+  "invested_value": 0,
+  "current_value": 0,
+  "pnl_value": 0,
+  "pnl_pct": 0,
+  "ai_verdict": "Not run yet",
+  "ai_reasoning": "Run the workflow once (Actions tab -> Run workflow) to populate this dashboard.",
+  "ai_considerations": [],
+  "last_updated": null
+}
