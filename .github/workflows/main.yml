@@ -1,9 +1,6 @@
 name: Stock averaging check
 
 on:
-  schedule:
-    # 10:05 UTC = 15:35 IST, shortly after NSE market close, Mon-Fri
-    - cron: "5 10 * * 1-5"
   workflow_dispatch: {}
 
 permissions:
